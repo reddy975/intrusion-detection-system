@@ -1,0 +1,13 @@
+pandas		#For data manipulation and CSV handling.
+scikit-learn	#For training ML models like Random Forest.
+flask		#For the web dashboard.
+joblib		#To save/load ML models efficiently.
+matplotlib	#For charts and visualization in the dashboard.
+numpy 		#Core numerical library used with pandas and ML
+xgboost		#Powerful gradient boosting ML algorithm (better than RF in many cases)
+seaborn		#For clean and easy data visualizations
+openpyxl	#To work with Excel files (if needed for logs/data)
+requests	#For any HTTP-based automation (alerts, APIs)
+psutil		#If you want to monitor system usage during attacks
+gunicorn	#Optional — for deploying Flask apps in production
+

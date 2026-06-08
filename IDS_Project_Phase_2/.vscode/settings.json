@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./app",
+        "./Scripts",
+        "C:/Users/Abhishek/AppData/Roaming/Python/Python313/site-packages"
+    ]
+}

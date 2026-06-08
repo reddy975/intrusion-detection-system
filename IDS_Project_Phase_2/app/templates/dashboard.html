@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart IDS Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Smart Intrusion Detection System</h1>
+        {% if session.get('logged_in') %}
+        <nav>
+            <a href="{{ url_for('home') }}" class="{% if menu=='home' %}active{% endif %}">Dashboard</a>
+            <a href="{{ url_for('predict') }}" class="{% if menu=='predict' %}active{% endif %}">Predict Flow</a>
+            <a href="{{ url_for('blocked_ips') }}" class="{% if menu=='blocked_ips' %}active{% endif %}">Blocked IPs</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+        {% endif %}
+    </header>
+
+    <main>
+        {% if not session.get('logged_in') %}
+        <!-- Login Form -->
+        <div class="login-box">
+            <h2>Admin Login</h2>
+            <form action="{{ url_for('login') }}" method="post">
+                <input type="text" name="username" placeholder="Username" required><br>
+                <input type="password" name="password" placeholder="Password" required><br>
+                <button type="submit">Login</button>
+            </form>
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+        </div>
+        {% elif menu == 'home' %}
+        <!-- Dashboard Overview -->
+        <section class="dashboard-summary">
+            <h2>Network Summary</h2>
+            <div class="stats">
+                <div class="card"><h3>{{ total_count }}</h3><p>Total Logs</p></div>
+                <div class="card"><h3>{{ block_count }}</h3><p>Blocked</p></div>
+                <div class="card"><h3>{{ safe_count }}</h3><p>Safe</p></div>
+                <div class="card"><h3>{{ unique_ips }}</h3><p>Unique IPs</p></div>
+            </div>
+
+            {% if chart_url %}
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ chart_url }}" alt="Top Blocked IPs">
+            </div>
+            {% endif %}
+        </section>
+
+        {% elif menu == 'predict' %}
+        <!-- Predict Flow Live Section -->
+        <section class="predict-section">
+            <h2>Real-Time Prediction Flow</h2>
+            <div id="alertContainer" class="alert-container"></div>
+        </section>
+
+        <script>
+        async function loadHistory() {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            if (data.status === 'ok') {
+                for (const alert of data.history.reverse()) {
+                    addAlert(alert);
+                }
+            }
+        }
+
+        function addAlert(alert) {
+            const container = document.getElementById('alertContainer');
+            const div = document.createElement('div');
+            div.className = 'alert-box ' + (alert.prediction.includes('Blocked') ? 'blocked' : 'normal');
+            let html = `<h3>${alert.prediction}</h3>
+                        <p><strong>Time:</strong> ${alert.timestamp}</p>
+                        <p><strong>Source IP:</strong> ${alert.ip}</p>`;
+            if (alert.dst_ip) html += `<p><strong>Destination IP:</strong> ${alert.dst_ip}</p>`;
+            if (alert.features) {
+                html += `<details><summary>View Features</summary><ul>`;
+                for (const [name, value] of Object.entries(alert.features)) {
+                    html += `<li>${name}: ${value}</li>`;
+                }
+                html += `</ul></details>`;
+            }
+            div.innerHTML = html;
+            container.prepend(div);
+        }
+
+        function startEventStream() {
+            const evtSource = new EventSource('/stream_alerts');
+            evtSource.onmessage = function(e) {
+                const alert = JSON.parse(e.data);
+                addAlert(alert);
+            };
+            evtSource.onerror = function() {
+                console.error("EventSource failed. Retrying in 5s...");
+                setTimeout(startEventStream, 5000);
+            };
+        }
+
+        loadHistory().then(startEventStream);
+        </script>
+
+        {% elif menu == 'blocked_ips' %} 
+        <!-- Blocked IPs --> 
+         <section class="blocked-ips"> 
+            <h2>IP Log</h2> 
+            <table> 
+                <tr><th>Timestamp IST </th>
+                    <th>Source IP</th>
+                    <th>Status</th>
+                    <th>Action</th></tr> 
+                    {% for row in blocked_ips %} 
+                    <tr> <td>{{ row.timestamp }}</td> 
+                        <td>{{ row.src_ip }}</td> 
+                        <td>{{ row.status }}</td> 
+                            <td>
+                            {% if row.status == "Normal" %}
+                                Safe
+                            {% elif row.status == "Blocked (Real)" %}
+                                <form action="{{ url_for('unblock_ip', ip=row.src_ip) }}" method="post">
+                                    <button type="submit">Unblock</button>
+                                </form>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr> 
+                    {% endfor %} 
+                </table> 
+            </section> 
+            {% endif %}
+    </main>
+    <footer>
+        <p>© 2025 Smart IDS Project — Real-time ML-based Intrusion Detection</p>
+    </footer>
+</body>
+</html>
